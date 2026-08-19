@@ -30,7 +30,8 @@ int main(int argc, char **argv) {
     struct pal_stream_attributes attr;
     struct pal_device dev;
     pal_stream_handle_t *stream = NULL;
-    const uint32_t channels = 8, frames = 960;
+    uint32_t channels = argc > 2 ? (uint32_t)strtoul(argv[2], NULL, 10) : 8;
+    const uint32_t frames = 960;
     int16_t *samples;
     struct pal_buffer buffer;
     const char *custom_key = argc > 1 ? argv[1] : "";
