@@ -60,6 +60,8 @@ int main(int argc, char **argv) {
     memset(&dev, 0, sizeof(dev));
     dev.id = PAL_DEVICE_OUT_SPEAKER;
     dev.config = attr.out_media_config;
+    dev.config.bit_width = 32;
+    dev.config.aud_fmt_id = PAL_AUDIO_FMT_PCM_S32_LE;
     snprintf(dev.custom_config.custom_key, PAL_MAX_CUSTOM_KEY_SIZE, "%s", custom_key);
 
     rc = p_pal_init();
