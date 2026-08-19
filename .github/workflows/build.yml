@@ -17,7 +17,7 @@ jobs:
       - name: Build
         run: |
           export PATH="$PWD/android-ndk-r26d/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
-          aarch64-linux-android34-clang -O2 -Itinyalsa split8.c tinyalsa/pcm.c -lm -o split8
+          aarch64-linux-android34-clang -O2 -I. split8.c tinyalsa/pcm.c -lm -o split8
           file split8
       - uses: actions/upload-artifact@v4
         with:
