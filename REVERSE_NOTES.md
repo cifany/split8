@@ -17,9 +17,25 @@
 ## 8ch PCM 未解问题
 - PCM 设备 24 (TDM-LPAIF_WSA-RX-PRIMARY) tinypcminfo 声称 max 8ch
 - 直接 open 8ch 成功，但 write 返回 EINVAL（NDK bionic 编译的 split8 和系统 tinyplay 都一样）
-- Android HAL 播 2ch 正常，说明设备 24 能写，只是不允许普通用户直接写 8ch
-- 下一步逆向方向：
-  1. 抓 audiohalservice.qti 对 PCM 24 的完整配置序列
-  2. 查 HAL 是否设置隐藏 mixer 控件/TDM 槽位/通道映射
-  3. 确认是否需要用 SNDRV_PCM_IOCTL_WRITEN_FRAMES 或 mmap
-  4. 反编译 vendor audio HAL 的 speaker 后端配置
+- `strace` 已精确确认 split8 的 ioctl 顺序：INFO/HW_PARAMS/SW_PARAMS/PREPARE 全成功，
+  `SNDRV_PCM_IOCTL_WRITEI_FRAMES` 返回 EINVAL。
+- PCM 24 只声明 `RW_INTERLEAVED`（access mask 0x8），所以 `WRITEN_FRAMES` 对应的
+  non-interleaved 模式不适用；PCM status mmap 也返回 ENXIO，不存在可替代的直接 mmap 写法。
+- 在 Android HAL 正常播放且 6 路 `aw_dev_*_switch` 全部 Enable 时，直接写 PCM 24 仍然
+  EINVAL，排除“只差功放 mixer route”这一假设。
+- 已确认 Android HAL 正常播放并不写 PCM 24。`audiohalservice.qti` 通过
+  `/vendor/lib64/libar-pal.so` 的 PAL/AGM 建图；其打开的 PCM 16/17 fd 不是音频数据写入点，
+  PCM 24 是物理 TDM/WSA backend，不是可由用户态直接灌数据的 front-end PCM。
+- `libar-pal.so` 中有 `Session::setSlotMask`、`setTaggedSlotMask`、8 项 channel-map 日志，
+  以及 `ResourceManager::allocateFrontEndIds`、`SessionAlsaPcm::open/write`。槽位与通道映射
+  是 PAL 建图的一部分，不是 PCM 24 上独立可见的 tinymix 开关。
+- 下一步应停止尝试 tinyalsa 直接写 PCM 24，改为让 split8 直接使用 PAL 或 AGM：创建
+  8ch PCM front-end session，设置 `PAL_DEVICE_OUT_SPEAKER`/WSA backend、slot mask 和
+  channel map，再由 PAL/AGM 连接到 PCM 24 backend。这样不经过 Android Audio HAL，
+  但仍使用设备内核要求的 Qualcomm DSP graph 层。
+
+## 本轮逆向文件
+- 已拉取设备 `/vendor/lib64/libar-pal.so` 到本地 `reverse/libar-pal.so`（仅本地分析，
+  不应提交该 vendor blob）。
+- `Session::setSlotMask`：0x37e550，size 3756。
+- `SessionAlsaPcm::open`：0x3a207c，`SessionAlsaPcm::write`：0x3ad944。

@@ -14,12 +14,19 @@ jobs:
           mkdir -p tinyalsa
           curl -L -o tinyalsa/pcm.c https://raw.githubusercontent.com/LineageOS/android_external_tinyalsa/master/pcm.c
           curl -L -o tinyalsa/asoundlib.h https://raw.githubusercontent.com/LineageOS/android_external_tinyalsa/master/include/tinyalsa/asoundlib.h
+      - name: Download PAL headers
+        run: |
+          curl -L -o PalApi.h https://raw.githubusercontent.com/LineageOS/android_vendor_qcom_opensource_arpal-lx/lineage-23.0-caf-sm8450/inc/PalApi.h
+          curl -L -o PalDefs.h https://raw.githubusercontent.com/LineageOS/android_vendor_qcom_opensource_arpal-lx/lineage-23.0-caf-sm8450/inc/PalDefs.h
       - name: Build
         run: |
           export PATH="$PWD/android-ndk-r26d/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
           aarch64-linux-android34-clang -O2 -I. split8.c tinyalsa/pcm.c -lm -o split8
-          file split8
+          aarch64-linux-android34-clang -O2 -I. pal_probe.c -ldl -o pal_probe
+          file split8 pal_probe
       - uses: actions/upload-artifact@v4
         with:
           name: split8
-          path: split8
+          path: |
+            split8
+            pal_probe
