@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include "PalApi.h"
 
 #define LOAD(name) do { \
@@ -33,6 +34,7 @@ int main(void) {
     int16_t *samples;
     struct pal_buffer buffer;
     int32_t rc;
+    int pal_init_owned;
 
     if (!lib) { fprintf(stderr, "dlopen: %s\n", dlerror()); return 1; }
     LOAD(pal_init); LOAD(pal_deinit); LOAD(pal_stream_open); LOAD(pal_stream_start);
@@ -59,14 +61,22 @@ int main(void) {
     dev.config = attr.out_media_config;
 
     rc = p_pal_init();
+    pal_init_owned = (rc == 0);
     fprintf(stderr, "pal_init=%d\n", rc);
-    if (rc) return 1;
+    if (rc != 0 && rc != -EALREADY) return 1;
     rc = p_pal_stream_open(&attr, 1, &dev, 0, NULL, cb, 0, &stream);
     fprintf(stderr, "pal_stream_open=%d handle=%p\n", rc, (void *)stream);
-    if (rc) { p_pal_deinit(); return 2; }
+    if (rc) {
+        if (pal_init_owned) p_pal_deinit();
+        return 2;
+    }
     rc = p_pal_stream_start(stream);
     fprintf(stderr, "pal_stream_start=%d\n", rc);
-    if (rc) { p_pal_stream_close(stream); p_pal_deinit(); return 3; }
+    if (rc) {
+        p_pal_stream_close(stream);
+        if (pal_init_owned) p_pal_deinit();
+        return 3;
+    }
 
     samples = calloc((size_t)frames * channels, sizeof(*samples));
     memset(&buffer, 0, sizeof(buffer));
@@ -78,7 +88,7 @@ int main(void) {
     free(samples);
     p_pal_stream_stop(stream);
     p_pal_stream_close(stream);
-    p_pal_deinit();
+    if (pal_init_owned) p_pal_deinit();
     dlclose(lib);
     return rc < 0 ? 4 : 0;
 }
