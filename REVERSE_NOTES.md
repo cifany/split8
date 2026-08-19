@@ -1,7 +1,8 @@
 # 当前设备状态（供下一个模型继续）
 
 ## 设备
-- OnePlus Pad 2 Pro / OPD2413 / 25091RP04C / Android 16 / KernelSU
+- 实际硬件：OnePlus Pad 2 Pro / OnePlus Pad 3，型号 OPD2413，Android 16 / KernelSU
+- 当前是二改包；`ro.product.*`/fingerprint 显示 Xiaomi / 25091RP04C / piano，仅是 ROM 属性，不能据此判断硬件型号
 
 ## 已修复
 - com.qti.phone 崩溃循环：已禁用 enabled=3，不再拖垮 system_server
@@ -39,3 +40,8 @@
   不应提交该 vendor blob）。
 - `Session::setSlotMask`：0x37e550，size 3756。
 - `SessionAlsaPcm::open`：0x3a207c，`SessionAlsaPcm::write`：0x3ad944。
+
+- 已新增 `pal_probe.c`：通过 `dlopen` 直接调用设备 `libar-pal.so`，请求 8ch/48k/S16 的
+  `PAL_STREAM_DEEP_BUFFER -> PAL_DEVICE_OUT_SPEAKER`，只写 20 ms 全零数据。
+- GitHub Actions run 32287330034 构建成功，产物在容器 `/root/split8-artifact/pal_probe`。
+  因 Android 桥接断开，本轮尚未上传和运行；不能把“构建成功”误记为“PAL 8ch 已成功”。
