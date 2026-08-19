@@ -1,0 +1,25 @@
+name: build-split8
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download NDK
+        run: |
+          curl -LO https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
+          unzip -q android-ndk-r26d-linux.zip
+      - name: Download tinyalsa
+        run: |
+          mkdir -p tinyalsa
+          curl -L -o tinyalsa/pcm.c https://raw.githubusercontent.com/LineageOS/android_external_tinyalsa/master/pcm.c
+          curl -L -o tinyalsa/asoundlib.h https://raw.githubusercontent.com/LineageOS/android_external_tinyalsa/master/include/tinyalsa/asoundlib.h
+      - name: Build
+        run: |
+          export PATH="$PWD/android-ndk-r26d/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          aarch64-linux-android34-clang -O2 -Itinyalsa split8.c tinyalsa/pcm.c -lm -o split8
+          file split8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: split8
+          path: split8
