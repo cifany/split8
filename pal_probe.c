@@ -17,8 +17,6 @@ static int32_t cb(pal_stream_handle_t *h, uint32_t event, uint32_t *data,
 }
 
 int main(int argc, char **argv) {
-    int32_t (*p_pal_init)(void);
-    void (*p_pal_deinit)(void);
     int32_t (*p_pal_stream_open)(struct pal_stream_attributes *, uint32_t,
         struct pal_device *, uint32_t, struct modifier_kv *, pal_stream_callback,
         uint64_t, pal_stream_handle_t **);
@@ -26,7 +24,7 @@ int main(int argc, char **argv) {
     ssize_t (*p_pal_stream_write)(pal_stream_handle_t *, struct pal_buffer *);
     int32_t (*p_pal_stream_stop)(pal_stream_handle_t *);
     int32_t (*p_pal_stream_close)(pal_stream_handle_t *);
-    void *lib = dlopen("/vendor/lib64/libar-pal.so", RTLD_NOW | RTLD_LOCAL);
+    void *lib = dlopen("/vendor/lib64/libpalipcservice.so", RTLD_NOW | RTLD_LOCAL);
     struct pal_stream_attributes attr;
     struct pal_device dev;
     pal_stream_handle_t *stream = NULL;
@@ -36,10 +34,9 @@ int main(int argc, char **argv) {
     struct pal_buffer buffer;
     const char *custom_key = argc > 1 ? argv[1] : "";
     int32_t rc;
-    int pal_init_owned;
 
     if (!lib) { fprintf(stderr, "dlopen: %s\n", dlerror()); return 1; }
-    LOAD(pal_init); LOAD(pal_deinit); LOAD(pal_stream_open); LOAD(pal_stream_start);
+    LOAD(pal_stream_open); LOAD(pal_stream_start);
     LOAD(pal_stream_write); LOAD(pal_stream_stop); LOAD(pal_stream_close);
 
     memset(&attr, 0, sizeof(attr));
@@ -65,21 +62,15 @@ int main(int argc, char **argv) {
     dev.config.aud_fmt_id = PAL_AUDIO_FMT_PCM_S32_LE;
     snprintf(dev.custom_config.custom_key, PAL_MAX_CUSTOM_KEY_SIZE, "%s", custom_key);
 
-    rc = p_pal_init();
-    pal_init_owned = (rc == 0);
-    fprintf(stderr, "pal_init=%d\n", rc);
-    if (rc != 0 && rc != -EALREADY) return 1;
     rc = p_pal_stream_open(&attr, 1, &dev, 0, NULL, cb, 0, &stream);
     fprintf(stderr, "pal_stream_open=%d handle=%p\n", rc, (void *)stream);
     if (rc) {
-        if (pal_init_owned) p_pal_deinit();
         return 2;
     }
     rc = p_pal_stream_start(stream);
     fprintf(stderr, "pal_stream_start=%d\n", rc);
     if (rc) {
         p_pal_stream_close(stream);
-        if (pal_init_owned) p_pal_deinit();
         return 3;
     }
 
@@ -93,7 +84,6 @@ int main(int argc, char **argv) {
     free(samples);
     p_pal_stream_stop(stream);
     p_pal_stream_close(stream);
-    if (pal_init_owned) p_pal_deinit();
     dlclose(lib);
     return rc < 0 ? 4 : 0;
 }
