@@ -16,7 +16,7 @@ static int32_t cb(pal_stream_handle_t *h, uint32_t event, uint32_t *data,
     return 0;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
     int32_t (*p_pal_init)(void);
     void (*p_pal_deinit)(void);
     int32_t (*p_pal_stream_open)(struct pal_stream_attributes *, uint32_t,
@@ -33,6 +33,7 @@ int main(void) {
     const uint32_t channels = 8, frames = 960;
     int16_t *samples;
     struct pal_buffer buffer;
+    const char *custom_key = argc > 1 ? argv[1] : "";
     int32_t rc;
     int pal_init_owned;
 
@@ -59,6 +60,7 @@ int main(void) {
     memset(&dev, 0, sizeof(dev));
     dev.id = PAL_DEVICE_OUT_SPEAKER;
     dev.config = attr.out_media_config;
+    snprintf(dev.custom_config.custom_key, PAL_MAX_CUSTOM_KEY_SIZE, "%s", custom_key);
 
     rc = p_pal_init();
     pal_init_owned = (rc == 0);
